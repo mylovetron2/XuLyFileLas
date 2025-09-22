@@ -844,8 +844,16 @@ bool MainWindow::writeBlockListToLas(const QString &outputPath, const QList<Bloc
     {
         if (info.mnemonic.toUpper() == "STEP")
         {
-            info.value = "0.100"; // Cố định step 0.1
-            info.unit = "M";      // Đơn vị mét
+            if (isDepthIncreasing)
+            {
+                info.value = "0.100"; // Cố định step 0.1
+            }
+            else
+            {
+                info.value = "-0.100"; // Cố định step -0.1
+            }
+            // info.value = "0.100"; // Cố định step 0.1
+            info.unit = "M"; // Đơn vị mét
             break;
         }
     }
@@ -1087,7 +1095,7 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
             break;
     }
     //  Xác định xu hướng độ sâu (tăng/giảm/không đổi) dựa trên slope hồi quy tuyến tính
-    bool isIncreasing = true; // default
+    // bool isIncreasing = true; // default
     if (!result.isEmpty())
     {
         QList<double> depthList;
@@ -1110,17 +1118,17 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
             if (slope > 0.0)
             {
                 qDebug() << "Xu hướng độ sâu: TĂNG (slope=" << slope << ")";
-                isIncreasing = true;
+                isDepthIncreasing = true;
             }
             else if (slope < 0.0)
             {
                 qDebug() << "Xu hướng độ sâu: GIẢM (slope=" << slope << ")";
-                isIncreasing = false;
+                isDepthIncreasing = false;
             }
             else
             {
                 qDebug() << "Xu hướng độ sâu: KHÔNG ĐỔI (slope=0)";
-                isIncreasing = true; // hoặc false đều được, vì không đổi
+                isDepthIncreasing = true; // hoặc false đều được, vì không đổi
             }
         }
     }
@@ -1142,7 +1150,7 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
                 filtered.append(result[i]);
                 continue;
             }
-            if (isIncreasing)
+            if (isDepthIncreasing)
             {
                 if (result[i].depth >= filtered.last().depth)
                 {
