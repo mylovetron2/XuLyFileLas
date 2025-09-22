@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::on_pushButton_clicked);
+    // connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::on_pushButton_clicked);
 }
 
 MainWindow::~MainWindow()
@@ -297,71 +297,6 @@ void MainWindow::on_pushButton_clicked()
     QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
 }
 
-void MainWindow::on_drawChartButton_clicked()
-{
-    QString filePath = QFileDialog::getOpenFileName(this, "Chọn file LAS để vẽ biểu đồ", "", "LAS Files (*.las)");
-    if (filePath.isEmpty())
-        return;
-    QFile inFile(filePath);
-    if (!inFile.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        QMessageBox::warning(this, "Lỗi", "Không mở được file LAS!");
-        return;
-    }
-    QTextStream in(&inFile);
-    bool inAscii = false;
-    QList<double> depthList, dosauList;
-    while (!in.atEnd())
-    {
-        QString line = in.readLine();
-        if (line.trimmed().toUpper().startsWith("~ASCII"))
-        {
-            inAscii = true;
-            continue;
-        }
-        if (inAscii && !line.trimmed().isEmpty() && !line.trimmed().startsWith("#"))
-        {
-            QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-            if (parts.size() >= 2)
-            {
-                bool ok1 = false, ok2 = false;
-                double depth = parts[0].toDouble(&ok1);
-                double dosau = parts[parts.size() - 1].toDouble(&ok2);
-                if (ok1 && ok2)
-                {
-                    depthList.append(depth);
-                    dosauList.append(dosau);
-                }
-            }
-        }
-    }
-    inFile.close();
-    QLineSeries *series = new QLineSeries();
-    for (int i = 0; i < depthList.size(); ++i)
-    {
-        series->append(depthList[i], dosauList[i]);
-    }
-    QChart *chart = new QChart();
-    chart->addSeries(series);
-    chart->setTitle("Biểu đồ DEPTH - DoSau");
-    chart->createDefaultAxes();
-    chart->axisX()->setTitleText("DEPTH");
-    chart->axisY()->setTitleText("DoSau");
-    if (!chartView)
-    {
-        chartView = new QChartView(chart, this);
-        chartView->setGeometry(10, 180, 380, 300);
-        chartView->setRenderHint(QPainter::Antialiasing);
-        chartView->setParent(this);
-        chartView->show();
-    }
-    else
-    {
-        chartView->setChart(chart);
-        chartView->show();
-    }
-}
-
 void MainWindow::on_exportLisToTextButton_clicked()
 {
     QString lisPath = QFileDialog::getOpenFileName(this, "Chọn file LIS", "", "LIS Files (*.lis)");
@@ -608,7 +543,7 @@ void MainWindow::readTXT(const QString &txtPath)
         }
     }
 
-    // Debug: In ra header, unit, và 5 dòng dữ liệu đầu tiên
+    qDebug() << " Debug: In ra header, unit, và 5 dòng dữ liệu đầu tiên";
     qDebug() << "Header:" << headerList;
     qDebug() << "Unit:" << unitList;
     for (int i = 0; i < qMin(5, dataRows.size()); ++i)
@@ -732,17 +667,17 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
 
     // Debug:
     // In ra nội dung curveInfoList và wellInfoList
-    qDebug()
-        << "curveInfoList:";
-    for (const CurveInfo &info : curveInfoList)
-    {
-        qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
-    }
-    qDebug() << "wellInfoList:";
-    for (const CurveInfo &info : wellInfoList)
-    {
-        qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
-    }
+    // qDebug()
+    //     << "curveInfoList:";
+    // for (const CurveInfo &info : curveInfoList)
+    // {
+    //     qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
+    // }
+    // qDebug() << "wellInfoList:";
+    // for (const CurveInfo &info : wellInfoList)
+    // {
+    //     qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
+    // }
 
     // Bắt đầu merge dữ liệu TXT vào LAS
     blockList.clear();
@@ -880,7 +815,7 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
     }
     lasFile.close();
     qDebug() << "Đã merge xong TXT vào LAS. blockList size:" << blockList.size();
-    // Debug: In ra 10 giá trị đầu tiên của blockList sau khi merge
+    qDebug() << " Debug: In ra 10 giá trị đầu tiên của blockList sau khi merge";
     int debugCount = 0;
     for (const BlockData &block : blockList)
     {
@@ -1240,4 +1175,112 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
         result = interpolated;
     }
     blocks = result;
+}
+
+// Vẽ đồ thị dữ liệu trong file TXT
+void MainWindow::on_btnDrawTxtChart_clicked()
+{
+    QString txtPath = QFileDialog::getOpenFileName(this, "Chọn file TXT để vẽ biểu đồ", "", "Text Files (*.txt)");
+    if (txtPath.isEmpty())
+        return;
+    QFile txtFile(txtPath);
+    if (!txtFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        QMessageBox::warning(this, "Lỗi", "Không mở được file TXT!");
+        return;
+    }
+    QTextStream in(&txtFile);
+    QList<double> xList, yList;
+    int lineIdx = 0;
+    while (!in.atEnd())
+    {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty())
+            continue;
+        // Bỏ qua dòng tiêu đề và dòng đơn vị (2 dòng đầu)
+        if (lineIdx < 2)
+        {
+            ++lineIdx;
+            continue;
+        }
+        QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        if (parts.size() >= 2)
+        {
+            bool ok2 = false;
+            double x = 0;
+            // Thử parse cột 1 là số
+            bool ok1 = false;
+            x = parts[0].toDouble(&ok1);
+            if (!ok1)
+            {
+                // Nếu không phải số, thử parse dạng thời gian d:hh:mm:ss hoặc hh:mm:ss
+                QStringList timeParts = parts[0].split(":");
+                qint64 totalSeconds = 0;
+                if (timeParts.size() == 4)
+                {
+                    int days = timeParts[0].toInt();
+                    int hours = timeParts[1].toInt();
+                    int minutes = timeParts[2].toInt();
+                    int seconds = timeParts[3].toInt();
+                    totalSeconds = days * 86400 + hours * 3600 + minutes * 60 + seconds;
+                }
+                else if (timeParts.size() == 3)
+                {
+                    int hours = timeParts[0].toInt();
+                    int minutes = timeParts[1].toInt();
+                    int seconds = timeParts[2].toInt();
+                    totalSeconds = hours * 3600 + minutes * 60 + seconds;
+                }
+                else
+                {
+                    qDebug() << "Bỏ qua dòng không nhận diện được thời gian:" << line;
+                    ++lineIdx;
+                    continue;
+                }
+                x = static_cast<double>(totalSeconds);
+                ok1 = true;
+            }
+            double y = parts[1].toDouble(&ok2);
+            if (ok1 && ok2)
+            {
+                xList.append(x);
+                yList.append(y);
+            }
+            else
+            {
+                qDebug() << "Bỏ qua dòng không hợp lệ (không parse được số):" << line;
+            }
+        }
+        else
+        {
+            qDebug() << "Bỏ qua dòng không đủ cột dữ liệu:" << line;
+        }
+        ++lineIdx;
+    }
+    txtFile.close();
+    if (xList.isEmpty() || yList.isEmpty())
+    {
+        QMessageBox::warning(this, "Lỗi", "Không có dữ liệu hợp lệ để vẽ!");
+        return;
+    }
+    QLineSeries *series = new QLineSeries();
+    for (int i = 0; i < xList.size(); ++i)
+        series->append(yList[i], xList[i]); // Đổi trục: giá trị là X, TIME/DEPTH là Y
+    QChart *chart = new QChart();
+    chart->addSeries(series);
+    chart->setTitle("Biểu đồ dữ liệu TXT (Giá trị - TIME/DEPTH)");
+    chart->createDefaultAxes();
+    chart->axisX()->setTitleText("Cột 2 (Giá trị)");
+    chart->axisY()->setTitleText("Cột 1 (TIME hoặc DEPTH)");
+    // Đảo chiều trục Y: giá trị lớn ở trên, nhỏ ở dưới
+    QValueAxis *axisY = qobject_cast<QValueAxis *>(chart->axisY());
+    if (axisY)
+    {
+        axisY->setReverse(true);
+    }
+    QChartView *chartView = new QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setWindowTitle("Biểu đồ TXT");
+    chartView->resize(800, 600);
+    chartView->show();
 }

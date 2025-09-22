@@ -42,7 +42,6 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         "MainWindow",
         "on_pushButton_clicked",
         "",
-        "on_drawChartButton_clicked",
         "on_exportLisToTextButton_clicked",
         "on_btnTaoFile_clicked",
         "on_btnTachFile_clicked",
@@ -55,32 +54,33 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         "out",
         "QList<CurveInfo>",
         "curveList",
-        "sectionName"
+        "sectionName",
+        "on_btnDrawTxtChart_clicked"
     };
 
     QtMocHelpers::UintData qt_methods {
         // Slot 'on_pushButton_clicked'
         QtMocHelpers::SlotData<void()>(1, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'on_drawChartButton_clicked'
-        QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_exportLisToTextButton_clicked'
-        QtMocHelpers::SlotData<void()>(4, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_btnTaoFile_clicked'
-        QtMocHelpers::SlotData<void()>(5, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(4, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_btnTachFile_clicked'
-        QtMocHelpers::SlotData<void()>(6, 2, QMC::AccessPrivate, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(5, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'readTXT'
-        QtMocHelpers::SlotData<void(const QString &)>(7, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 8 },
+        QtMocHelpers::SlotData<void(const QString &)>(6, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 7 },
         }}),
         // Slot 'mergeTxtLas'
-        QtMocHelpers::SlotData<void(const QString &)>(9, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::QString, 10 },
+        QtMocHelpers::SlotData<void(const QString &)>(8, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::QString, 9 },
         }}),
         // Slot 'writeCurveInfo'
-        QtMocHelpers::SlotData<void(QTextStream &, const QList<CurveInfo> &, const QString &)>(11, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { 0x80000000 | 12, 13 }, { 0x80000000 | 14, 15 }, { QMetaType::QString, 16 },
+        QtMocHelpers::SlotData<void(QTextStream &, const QList<CurveInfo> &, const QString &)>(10, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 11, 12 }, { 0x80000000 | 13, 14 }, { QMetaType::QString, 15 },
         }}),
+        // Slot 'on_btnDrawTxtChart_clicked'
+        QtMocHelpers::SlotData<void()>(16, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -105,13 +105,13 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
     if (_c == QMetaObject::InvokeMetaMethod) {
         switch (_id) {
         case 0: _t->on_pushButton_clicked(); break;
-        case 1: _t->on_drawChartButton_clicked(); break;
-        case 2: _t->on_exportLisToTextButton_clicked(); break;
-        case 3: _t->on_btnTaoFile_clicked(); break;
-        case 4: _t->on_btnTachFile_clicked(); break;
-        case 5: _t->readTXT((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
-        case 6: _t->mergeTxtLas((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
-        case 7: _t->writeCurveInfo((*reinterpret_cast< std::add_pointer_t<QTextStream&>>(_a[1])),(*reinterpret_cast< std::add_pointer_t<QList<CurveInfo>>>(_a[2])),(*reinterpret_cast< std::add_pointer_t<QString>>(_a[3]))); break;
+        case 1: _t->on_exportLisToTextButton_clicked(); break;
+        case 2: _t->on_btnTaoFile_clicked(); break;
+        case 3: _t->on_btnTachFile_clicked(); break;
+        case 4: _t->readTXT((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
+        case 5: _t->mergeTxtLas((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
+        case 6: _t->writeCurveInfo((*reinterpret_cast< std::add_pointer_t<QTextStream&>>(_a[1])),(*reinterpret_cast< std::add_pointer_t<QList<CurveInfo>>>(_a[2])),(*reinterpret_cast< std::add_pointer_t<QString>>(_a[3]))); break;
+        case 7: _t->on_btnDrawTxtChart_clicked(); break;
         default: ;
         }
     }

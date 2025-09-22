@@ -44,7 +44,7 @@ public:
 
 private slots:
     void on_pushButton_clicked();
-    void on_drawChartButton_clicked();
+    // void on_drawChartButton_clicked();
     void on_exportLisToTextButton_clicked();
     void on_btnTaoFile_clicked();
 
@@ -53,6 +53,8 @@ private slots:
     void readTXT(const QString &txtPath);
     void mergeTxtLas(const QString &lasPath);
     void writeCurveInfo(QTextStream &out, const QList<CurveInfo> &curveList, const QString &sectionName);
+
+    void on_btnDrawTxtChart_clicked();
 
 private:
     Ui::MainWindow *ui;

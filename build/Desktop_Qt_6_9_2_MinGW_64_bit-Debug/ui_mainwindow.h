@@ -21,9 +21,9 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralwidget;
-    QPushButton *pushButton;
     QPushButton *btnTaoFile;
     QPushButton *btnTachFile;
+    QPushButton *btnDrawTxtChart;
 
     void setupUi(QMainWindow *MainWindow)
     {
@@ -32,15 +32,15 @@ public:
         MainWindow->resize(400, 200);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName("centralwidget");
-        pushButton = new QPushButton(centralwidget);
-        pushButton->setObjectName("pushButton");
-        pushButton->setGeometry(QRect(20, 20, 161, 40));
         btnTaoFile = new QPushButton(centralwidget);
         btnTaoFile->setObjectName("btnTaoFile");
         btnTaoFile->setGeometry(QRect(20, 70, 161, 41));
         btnTachFile = new QPushButton(centralwidget);
         btnTachFile->setObjectName("btnTachFile");
-        btnTachFile->setGeometry(QRect(200, 20, 161, 40));
+        btnTachFile->setGeometry(QRect(20, 20, 161, 40));
+        btnDrawTxtChart = new QPushButton(centralwidget);
+        btnDrawTxtChart->setObjectName("btnDrawTxtChart");
+        btnDrawTxtChart->setGeometry(QRect(200, 20, 180, 40));
         MainWindow->setCentralWidget(centralwidget);
 
         retranslateUi(MainWindow);
@@ -51,9 +51,9 @@ public:
     void retranslateUi(QMainWindow *MainWindow)
     {
         MainWindow->setWindowTitle(QCoreApplication::translate("MainWindow", "X\341\273\255 l\303\275 file LAS", nullptr));
-        pushButton->setText(QCoreApplication::translate("MainWindow", "Covert LAS file", nullptr));
         btnTaoFile->setText(QCoreApplication::translate("MainWindow", "T\341\272\241o file Test", nullptr));
         btnTachFile->setText(QCoreApplication::translate("MainWindow", "Covert LAS file", nullptr));
+        btnDrawTxtChart->setText(QCoreApplication::translate("MainWindow", "V\341\272\275 \304\221\341\273\223 th\341\273\213 TXT", nullptr));
     } // retranslateUi
 
 };
