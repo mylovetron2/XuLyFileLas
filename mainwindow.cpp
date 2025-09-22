@@ -991,15 +991,32 @@ void MainWindow::on_btnTachFile_clicked()
 // Hàm xử lý blockList trước khi ghi file (có thể lọc, chỉnh sửa, v.v.)
 void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
 {
-    QMap<double, QList<BlockData>> groupedBlocks;
+    // Gom nhóm các block theo depth bằng QList
+    QList<QPair<double, QList<BlockData>>> groupedBlocks;
     for (const BlockData &block : blocks)
     {
-        groupedBlocks[block.depth].append(block);
+        bool found = false;
+        for (auto &pair : groupedBlocks)
+        {
+            if (qFuzzyCompare(pair.first + 1, block.depth + 1))
+            { // So sánh double an toàn
+                pair.second.append(block);
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            groupedBlocks.append(qMakePair(block.depth, QList<BlockData>{block}));
+        }
     }
+    // Sắp xếp theo depth tăng dần
+    // std::sort(groupedBlocks.begin(), groupedBlocks.end(), [](const QPair<double, QList<BlockData>> &a, const QPair<double, QList<BlockData>> &b)
+    //           { return a.first < b.first; });
     QList<BlockData> result;
-    for (auto it = groupedBlocks.begin(); it != groupedBlocks.end(); ++it)
+    for (const auto &pair : groupedBlocks)
     {
-        const QList<BlockData> &blockGroup = it.value();
+        const QList<BlockData> &blockGroup = pair.second;
         if (blockGroup.isEmpty())
             continue;
         // Nếu chỉ có 1 block, giữ nguyên
@@ -1049,7 +1066,7 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
             avgRows.append(avgCol);
         }
         BlockData newBlock;
-        newBlock.depth = it.key();
+        newBlock.depth = pair.first;
         newBlock.data = avgRows;
         result.append(newBlock);
     }
@@ -1069,7 +1086,7 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
         if (debugCount >= 10)
             break;
     }
-    // Xác định xu hướng độ sâu (tăng/giảm/không đổi) dựa trên slope hồi quy tuyến tính
+    //  Xác định xu hướng độ sâu (tăng/giảm/không đổi) dựa trên slope hồi quy tuyến tính
     bool isIncreasing = true; // default
     if (!result.isEmpty())
     {
