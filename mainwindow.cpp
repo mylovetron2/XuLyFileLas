@@ -475,7 +475,6 @@ void MainWindow::readTXT(const QString &txtPath)
         QMessageBox::warning(this, "Lỗi", "Không mở được file TXT!");
         return;
     }
-    // Đã chuyển headerList, unitList, dataRows thành biến toàn cục (khai báo ở đầu file mainwindow.cpp hoặc mainwindow.h)
     QTextStream txtIn(&txtFile);
 
     int lineIdx = 0;
@@ -864,8 +863,8 @@ bool MainWindow::writeBlockListToLas(const QString &outputPath, const QList<Bloc
     out << "  VERS.                         2.00 : CWLS LOG ASCII STANDARD - VERSION 2.00              \n";
     out << "  WRAP.                          YES : MULTIPLE LINES PER DEPTH STEP             \n";
 
-    writeCurveInfo(out, wellInfoList, "~WELL");
-    writeCurveInfo(out, curveInfoList, "~CURVE");
+    writeCurveInfo(out, wellInfoList, "~Well information");
+    writeCurveInfo(out, curveInfoList, "~Curve information");
 
     out << "~ASCII\n";
     // Ghi từng block
@@ -1054,7 +1053,22 @@ void MainWindow::xuLyBlocklist(QList<BlockData> &blocks)
         newBlock.data = avgRows;
         result.append(newBlock);
     }
-
+    // Debug: In ra 10 giá trị đầu tiên của result
+    qDebug() << "Debug 10 giá trị đầu tiên của result:";
+    int debugCount = 0;
+    for (const BlockData &block : result)
+    {
+        qDebug() << "Block depth:" << block.depth;
+        for (const QVector<double> &row : block.data)
+        {
+            qDebug() << "  Data row:" << row;
+            debugCount++;
+            if (debugCount >= 10)
+                break;
+        }
+        if (debugCount >= 10)
+            break;
+    }
     // Xác định xu hướng độ sâu (tăng/giảm/không đổi) dựa trên slope hồi quy tuyến tính
     bool isIncreasing = true; // default
     if (!result.isEmpty())
@@ -1282,5 +1296,41 @@ void MainWindow::on_btnDrawTxtChart_clicked()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setWindowTitle("Biểu đồ TXT");
     chartView->resize(800, 600);
+    // Bật chức năng scale (zoom/pan) với nút chuyển đổi
+    chartView->setInteractive(true);
+    chartView->setDragMode(QGraphicsView::ScrollHandDrag); // Mặc định là pan
+
+    // Thêm nút chuyển đổi chế độ zoom/pan
+    QPushButton *btnToggle = new QPushButton("Chuyển Zoom/Pan", chartView);
+    btnToggle->setGeometry(10, 10, 130, 30);
+    btnToggle->setStyleSheet("background: white; border: 1px solid gray;");
+    btnToggle->raise();
+    // Biến trạng thái
+    bool *isZoomMode = new bool(false);
+    QObject::connect(btnToggle, &QPushButton::clicked, [chartView, btnToggle, isZoomMode]()
+                     {
+        *isZoomMode = !*isZoomMode;
+        if (*isZoomMode) {
+            chartView->setRubberBand(QChartView::RectangleRubberBand);
+            chartView->setDragMode(QGraphicsView::NoDrag);
+            btnToggle->setText("Chuyển Pan");
+        } else {
+            chartView->setRubberBand(QChartView::NoRubberBand);
+            chartView->setDragMode(QGraphicsView::ScrollHandDrag);
+            btnToggle->setText("Chuyển Zoom");
+        } });
+    btnToggle->setText("Chuyển Zoom");
+
+    // Thêm nút Reset Zoom
+    QPushButton *btnReset = new QPushButton("Reset Zoom", chartView);
+    btnReset->setGeometry(150, 10, 110, 30);
+    btnReset->setStyleSheet("background: white; border: 1px solid gray;");
+    btnReset->raise();
+    QObject::connect(btnReset, &QPushButton::clicked, [chart, chartView]()
+                     {
+        chart->zoomReset();
+        chartView->setRubberBand(QChartView::NoRubberBand);
+        chartView->setDragMode(QGraphicsView::ScrollHandDrag); });
+
     chartView->show();
 }
