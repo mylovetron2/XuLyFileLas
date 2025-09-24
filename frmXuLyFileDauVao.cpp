@@ -17,7 +17,9 @@ frmXuLyFileDauVao::frmXuLyFileDauVao(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle("Phân tích file TXT");
-    resize(800, 500);
+    resize(1200, 600);
+    setMinimumSize(900, 500);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     mainLayout = new QHBoxLayout(this);
 
     listWidgetTxtFiles = new QListWidget(this);
@@ -27,17 +29,35 @@ frmXuLyFileDauVao::frmXuLyFileDauVao(QWidget *parent)
     chartContainer = new QWidget(this);
     QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
     chartView = new QChartView(chartContainer);
-    chartLayout->addWidget(chartView, 2);
+    chartView->setStyleSheet("background: #f8f9fa; border-radius: 12px; border: 1px solid #d1d5db;");
+    chartView->setRubberBand(QChartView::RectangleRubberBand);
+    chartLayout->addWidget(chartView, 4);
     // Tạo layout dọc cho phần bên phải
     QVBoxLayout *rightLayout = new QVBoxLayout();
+    QLabel *trendTitle = new QLabel("Kết quả xu hướng Depth", chartContainer);
+    trendTitle->setStyleSheet("font-weight: bold; font-size: 15px; color: #2d3748; margin-bottom: 8px;");
+    rightLayout->addWidget(trendTitle);
     trendLabel = new QLabel(chartContainer);
     trendLabel->setWordWrap(true);
-    trendLabel->setMinimumWidth(220);
+    trendLabel->setMinimumWidth(140);
+    trendLabel->setMaximumWidth(180);
     trendLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    trendLabel->setStyleSheet("background: #fff; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px; font-size: 13px; color: #222; margin-bottom: 12px;");
     rightLayout->addWidget(trendLabel);
     QPushButton *btnTachFile = new QPushButton("Tách file", chartContainer);
+    btnTachFile->setStyleSheet("background: #3182ce; color: #fff; border-radius: 6px; padding: 6px 18px; font-weight: bold; font-size: 14px;");
+    btnTachFile->setIcon(QIcon(":/icons/split.png"));
     rightLayout->addWidget(btnTachFile);
+    // Thêm nút Reset zoom
+    QPushButton *btnResetZoom = new QPushButton("Reset", chartContainer);
+    btnResetZoom->setStyleSheet("background: #e53e3e; color: #fff; border-radius: 6px; padding: 6px 18px; font-weight: bold; font-size: 14px; margin-top: 8px;");
+    btnResetZoom->setIcon(QIcon(":/icons/reset.png"));
+    rightLayout->addWidget(btnResetZoom);
     rightLayout->addStretch();
+    connect(btnResetZoom, &QPushButton::clicked, this, [this]()
+            {
+        if (chartView && chartView->chart())
+            chartView->chart()->zoomReset(); });
     chartLayout->addLayout(rightLayout, 1);
     chartContainer->setLayout(chartLayout);
     mainLayout->addWidget(chartContainer);
@@ -64,6 +84,10 @@ void frmXuLyFileDauVao::listTxtFiles(const QString &dirPath)
     QDir dir(dirPath);
     QStringList txtFiles = dir.entryList(QStringList() << "*.txt", QDir::Files);
     listWidgetTxtFiles->clear();
+    QLabel *listTitle = new QLabel("Danh sách file TXT", listWidgetTxtFiles);
+    listTitle->setStyleSheet("font-weight: bold; font-size: 15px; color: #2d3748; margin-bottom: 8px;");
+    listWidgetTxtFiles->setStyleSheet("background: #f1f5f9; border-radius: 10px; font-size: 13px; color: #222; padding: 6px;");
+    listWidgetTxtFiles->setFont(QFont("Segoe UI", 11));
     for (const QString &file : txtFiles)
         listWidgetTxtFiles->addItem(dir.filePath(file));
 }
@@ -239,83 +263,85 @@ void frmXuLyFileDauVao::drawChartForTxt(const QString &txtPath)
 
 void frmXuLyFileDauVao::onBtnTachFileClicked()
 {
-    QListWidgetItem *item = listWidgetTxtFiles->currentItem();
-    if (!item)
-    {
-        QMessageBox::warning(this, "Lỗi", "Vui lòng chọn một file TXT trong danh sách!");
-        return;
-    }
-    QString txtPath = item->text();
-    QString result = analyzeDepthTrend(txtPath);
-    QMessageBox::information(this, "Kết quả tách xu hướng Depth", result);
-    // Hàm phân tích xu hướng tăng/giảm Depth
 }
 
 QString frmXuLyFileDauVao::analyzeDepthTrend(const QString &txtPath)
 {
     QFile txtFile(txtPath);
     if (!txtFile.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
         return "Không mở được file TXT!";
-    }
     QTextStream in(&txtFile);
-    QList<double> depthList;
+    int dirColIdx = -1;
+    bool foundHeader = false;
     int lineIdx = 0;
+    QList<int> dirList;
+    // Tìm dòng tiêu đề chứa DIR
     while (!in.atEnd())
     {
         QString line = in.readLine().trimmed();
         if (line.isEmpty())
-            continue;
-        if (lineIdx < 2)
         {
             ++lineIdx;
             continue;
         }
         QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        if (parts.size() >= 2)
+        if (!foundHeader)
         {
-            bool ok = false;
-            double depth = parts[1].toDouble(&ok);
-            if (ok)
-                depthList.append(depth);
+            for (int i = 0; i < parts.size(); ++i)
+            {
+                if (parts[i].toUpper() == "DIR")
+                {
+                    dirColIdx = i;
+                    foundHeader = true;
+                    break;
+                }
+            }
+            ++lineIdx;
+            continue;
+        }
+        if (foundHeader)
+        {
+            if (dirColIdx != -1 && parts.size() > dirColIdx)
+            {
+                bool ok = false;
+                int dir = parts[dirColIdx].toInt(&ok);
+                if (ok)
+                    dirList.append(dir);
+            }
         }
         ++lineIdx;
     }
     txtFile.close();
-    if (depthList.size() < 2)
-    {
-        return "Không đủ dữ liệu Depth để phân tích!";
-    }
-    // Phân tích xu hướng tăng/giảm
-    QList<QPair<int, int>> tangList, giamList;
+    if (dirList.size() < 2)
+        return "Không đủ dữ liệu DIR để phân tích!";
+    // Phân tích xu hướng dựa vào DIR
+    QList<QPair<int, int>> upList, downList;
     int start = 0;
-    bool isTang = depthList[1] > depthList[0];
-    for (int i = 1; i < depthList.size(); ++i)
+    int currDir = dirList[0];
+    for (int i = 1; i < dirList.size(); ++i)
     {
-        bool currTang = depthList[i] > depthList[i - 1];
-        if (currTang != isTang)
+        if (dirList[i] != currDir)
         {
-            if (isTang)
-                tangList.append(qMakePair(start, i - 1));
+            if (currDir == 0)
+                downList.append(qMakePair(start, i - 1));
             else
-                giamList.append(qMakePair(start, i - 1));
-            start = i - 1;
-            isTang = currTang;
+                upList.append(qMakePair(start, i - 1));
+            start = i;
+            currDir = dirList[i];
         }
     }
     // Đoạn cuối cùng
-    if (isTang)
-        tangList.append(qMakePair(start, depthList.size() - 1));
+    if (currDir == 0)
+        downList.append(qMakePair(start, dirList.size() - 1));
     else
-        giamList.append(qMakePair(start, depthList.size() - 1));
-
+        upList.append(qMakePair(start, dirList.size() - 1));
     // Kết quả
     QString result;
-    result += "Đoạn xu hướng TĂNG Depth:\n";
-    for (const auto &seg : tangList)
-        result += QString("  Dòng %1 đến %2\n").arg(seg.first + 3).arg(seg.second + 3); // +3 vì bỏ qua 2 dòng đầu
-    result += "\nĐoạn xu hướng GIẢM Depth:\n";
-    for (const auto &seg : giamList)
-        result += QString("  Dòng %1 đến %2\n").arg(seg.first + 3).arg(seg.second + 3);
+    result += "Đoạn xu hướng DOWN (màu đỏ):\n";
+    for (const auto &seg : downList)
+        result += QString("  Dòng %1 đến %2\n").arg(seg.first + 1).arg(seg.second + 1);
+    result += "\nĐoạn xu hướng UP:\n";
+    for (const auto &seg : upList)
+        result += QString("  Dòng %1 đến %2\n").arg(seg.first + 1).arg(seg.second + 1);
     return result;
 }
