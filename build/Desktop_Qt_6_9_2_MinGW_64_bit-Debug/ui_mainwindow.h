@@ -51,7 +51,7 @@ public:
     void retranslateUi(QMainWindow *MainWindow)
     {
         MainWindow->setWindowTitle(QCoreApplication::translate("MainWindow", "X\341\273\255 l\303\275 file LAS", nullptr));
-        btnTaoFile->setText(QCoreApplication::translate("MainWindow", "T\341\272\241o file Test", nullptr));
+        btnTaoFile->setText(QCoreApplication::translate("MainWindow", "X\341\273\255 l\303\275 file \304\221\341\272\247u v\303\240o", nullptr));
         btnTachFile->setText(QCoreApplication::translate("MainWindow", "Covert LAS file", nullptr));
         btnDrawTxtChart->setText(QCoreApplication::translate("MainWindow", "V\341\272\275 \304\221\341\273\223 th\341\273\213 TXT", nullptr));
     } // retranslateUi

@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Tạo file Test</string>
+     <string>Xử lý file đầu vào</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnTachFile">
@@ -40,19 +40,19 @@
      <string>Covert LAS file</string>
     </property>
    </widget>
-    <widget class="QPushButton" name="btnDrawTxtChart">
-     <property name="geometry">
-      <rect>
-       <x>200</x>
-       <y>20</y>
-       <width>180</width>
-       <height>40</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Vẽ đồ thị TXT</string>
-     </property>
-    </widget>
+   <widget class="QPushButton" name="btnDrawTxtChart">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>20</y>
+      <width>180</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Vẽ đồ thị TXT</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

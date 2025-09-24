@@ -13,6 +13,8 @@
 #include <QProgressDialog>
 #include <QDebug>
 #include "LisFile2.h"
+#include <QLabel>
+#include "frmXuLyFileDauVao.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -344,122 +346,9 @@ qint64 MainWindow::timeStringToSeconds(const QString &str)
 
 void MainWindow::on_btnTaoFile_clicked()
 {
-    QString lasPath = QFileDialog::getOpenFileName(this, "Chọn file LAS", "", "LAS Files (*.las)");
-    if (lasPath.isEmpty())
-        return;
-
-    QFile lasFile(lasPath);
-    if (!lasFile.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        QMessageBox::warning(this, "Lỗi", "Không mở được file LAS!");
-        return;
-    }
-
-    QTextStream in(&lasFile);
-    QString content;
-    while (!in.atEnd())
-    {
-        content += in.readLine() + "\n";
-    }
-    lasFile.close();
-
-    // QMessageBox::information(this, "Nội dung file LAS", content.left(10000)); // Hiển thị tối đa 10000 ký tự
-    QString newContent;
-    QTextStream stream(&content);
-    bool inAscii = false;
-    QStringList asciiLines;
-    while (!stream.atEnd())
-    {
-        QString line = stream.readLine();
-        if (line.trimmed().toUpper().startsWith("~ASCII"))
-        {
-            inAscii = true;
-            newContent += line + "\n";
-            continue;
-        }
-        if (!inAscii)
-        {
-            newContent += line + "\n";
-        }
-        else
-        {
-            asciiLines.append(line);
-        }
-    }
-
-    // Tìm block header đầu tiên (giả sử là dòng đầu tiên có 1 số, không có khoảng trắng đầu dòng)
-    int headerIdx = -1;
-    double headerValue = 0;
-    for (int i = 0; i < asciiLines.size(); ++i)
-    {
-        QString l = asciiLines[i];
-        if (l.trimmed().isEmpty() || l.trimmed().startsWith("#"))
-            continue;
-        QStringList parts = l.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        if (parts.size() == 1 && !l.isEmpty() && !l.at(0).isSpace())
-        {
-            bool ok = false;
-            double val = parts[0].toDouble(&ok);
-            if (ok)
-            {
-                headerIdx = i;
-                headerValue = val;
-                break;
-            }
-        }
-    }
-    if (headerIdx == -1)
-    {
-        QMessageBox::warning(this, "Lỗi", "Không tìm thấy block header trong phần ~ASCII!");
-        return;
-    }
-
-    // Lấy block dữ liệu (từ headerIdx đến khi gặp block header tiếp theo hoặc hết)
-    int blockEnd = asciiLines.size();
-    for (int i = headerIdx + 1; i < asciiLines.size(); ++i)
-    {
-        QString l = asciiLines[i];
-        if (l.trimmed().isEmpty() || l.trimmed().startsWith("#"))
-            continue;
-        QStringList parts = l.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        if (parts.size() == 1 && !l.isEmpty() && !l.at(0).isSpace())
-        {
-            blockEnd = i;
-            break;
-        }
-    }
-    QStringList block;
-    for (int i = headerIdx; i < blockEnd; ++i)
-    {
-        block.append(asciiLines[i]);
-    }
-
-    // Lặp lại 500000 lần, mỗi lần tăng header lên 1000
-    for (int i = 0; i < 500000; ++i)
-    {
-        double newHeader = headerValue + i * 1000;
-        QString headerLine = QString::number(newHeader, 'f', 0);
-        newContent += headerLine + "\n";
-        for (int j = 1; j < block.size(); ++j)
-        {
-            newContent += block[j] + "\n";
-        }
-    }
-
-    // Ghi ra file mới
-    QString savePath = QFileDialog::getSaveFileName(this, "Lưu file LAS mới", "", "LAS Files (*.las)");
-    if (savePath.isEmpty())
-        return;
-    QFile outFile(savePath);
-    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text))
-    {
-        QMessageBox::warning(this, "Lỗi", "Không tạo được file đầu ra!");
-        return;
-    }
-    QTextStream out(&outFile);
-    out << newContent;
-    outFile.close();
-    QMessageBox::information(this, "Thành công", "Đã tạo file LAS mới với 500000 block header!");
+    frmXuLyFileDauVao form(this);
+    form.setWindowModality(Qt::ApplicationModal);
+    form.exec();
 }
 
 void MainWindow::readTXT(const QString &txtPath)

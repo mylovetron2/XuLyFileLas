@@ -207,20 +207,6 @@ void frmXuLyFileDauVao::drawChartForTxt(const QString &txtPath)
         return;
     }
     // Kiểm tra nếu tất cả giá trị dir đều giống nhau (không có đoạn để vẽ)
-    bool allSame = true;
-    for (int i = 1; i < n; ++i)
-    {
-        if (dirList[i] != dirList[0])
-        {
-            allSame = false;
-            break;
-        }
-    }
-    if (allSame)
-    {
-        QMessageBox::warning(this, "Lỗi", "Không có đoạn tăng/giảm để vẽ!");
-        return;
-    }
     QChart *chart = new QChart();
     int start = 0;
     int currDir = dirList[0];
@@ -263,6 +249,103 @@ void frmXuLyFileDauVao::drawChartForTxt(const QString &txtPath)
 
 void frmXuLyFileDauVao::onBtnTachFileClicked()
 {
+    QListWidgetItem *item = listWidgetTxtFiles->currentItem();
+    if (!item)
+    {
+        QMessageBox::warning(this, "Lỗi", "Vui lòng chọn một file TXT trong danh sách!");
+        return;
+    }
+    QString txtPath = item->text();
+    QFile txtFile(txtPath);
+    if (!txtFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        QMessageBox::warning(this, "Lỗi", "Không mở được file TXT!");
+        return;
+    }
+    QTextStream in(&txtFile);
+    QStringList lines;
+    while (!in.atEnd())
+    {
+        lines << in.readLine();
+    }
+    txtFile.close();
+    // Tìm dòng tiêu đề chứa DIR
+    int dirColIdx = -1;
+    int headerLineIdx = -1;
+    for (int i = 0; i < lines.size(); ++i)
+    {
+        QString line = lines[i].trimmed();
+        if (line.isEmpty())
+            continue;
+        QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        for (int j = 0; j < parts.size(); ++j)
+        {
+            if (parts[j].toUpper() == "DIR")
+            {
+                dirColIdx = j;
+                headerLineIdx = i;
+                break;
+            }
+        }
+        if (dirColIdx != -1)
+            break;
+    }
+    if (dirColIdx == -1 || headerLineIdx == -1)
+    {
+        QMessageBox::warning(this, "Lỗi", "Không tìm thấy cột DIR trong file!");
+        return;
+    }
+    // Tách dữ liệu up/down
+    QStringList upLines, downLines;
+    // Giữ nguyên cấu trúc header
+    for (int i = 0; i <= headerLineIdx; ++i)
+    {
+        upLines << lines[i];
+        downLines << lines[i];
+    }
+    // Duyệt dữ liệu sau header
+    for (int i = headerLineIdx + 1; i < lines.size(); ++i)
+    {
+        QString line = lines[i].trimmed();
+        if (line.isEmpty())
+            continue;
+        QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        if (parts.size() <= dirColIdx)
+            continue;
+        bool ok = false;
+        int dir = parts[dirColIdx].toInt(&ok);
+        if (!ok)
+            continue;
+        if (dir == 0)
+            downLines << lines[i];
+        else
+            upLines << lines[i];
+    }
+    // Tạo file mới
+    QFileInfo fi(txtPath);
+    QString baseName = fi.completeBaseName();
+    QString ext = fi.suffix();
+    QString upFile = fi.path() + "/" + baseName + "_up." + ext;
+    QString downFile = fi.path() + "/" + baseName + "_down." + ext;
+    QFile fUp(upFile), fDown(downFile);
+    if (fUp.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QTextStream out(&fUp);
+        for (const QString &l : upLines)
+            out << l << "\n";
+        fUp.close();
+    }
+    if (fDown.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QTextStream out(&fDown);
+        for (const QString &l : downLines)
+            out << l << "\n";
+        fDown.close();
+    }
+    QMessageBox::information(this, "Tách file", QString("Đã tạo file:\n%1\n%2").arg(upFile).arg(downFile));
+    // Refresh lại danh sách file TXT trong thư mục hiện tại
+    QString currentDir = fi.path();
+    listTxtFiles(currentDir);
 }
 
 QString frmXuLyFileDauVao::analyzeDepthTrend(const QString &txtPath)
