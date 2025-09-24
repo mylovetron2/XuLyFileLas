@@ -25,12 +25,20 @@ frmXuLyFileDauVao::frmXuLyFileDauVao(QWidget *parent)
     mainLayout->addWidget(listWidgetTxtFiles);
 
     chartContainer = new QWidget(this);
-    QVBoxLayout *chartLayout = new QVBoxLayout(chartContainer);
+    QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
     chartView = new QChartView(chartContainer);
-    chartLayout->addWidget(chartView);
-    // Thêm nút Tách file dưới chartView
+    chartLayout->addWidget(chartView, 2);
+    // Tạo layout dọc cho phần bên phải
+    QVBoxLayout *rightLayout = new QVBoxLayout();
+    trendLabel = new QLabel(chartContainer);
+    trendLabel->setWordWrap(true);
+    trendLabel->setMinimumWidth(220);
+    trendLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    rightLayout->addWidget(trendLabel);
     QPushButton *btnTachFile = new QPushButton("Tách file", chartContainer);
-    chartLayout->addWidget(btnTachFile);
+    rightLayout->addWidget(btnTachFile);
+    rightLayout->addStretch();
+    chartLayout->addLayout(rightLayout, 1);
     chartContainer->setLayout(chartLayout);
     mainLayout->addWidget(chartContainer);
     connect(btnTachFile, &QPushButton::clicked, this, &frmXuLyFileDauVao::onBtnTachFileClicked);
@@ -223,6 +231,10 @@ void frmXuLyFileDauVao::drawChartForTxt(const QString &txtPath)
         axisY->setReverse(true);
     chartView->setChart(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
+
+    // Hiển thị kết quả phân tích xu hướng cố định trên form
+    QString trendResult = analyzeDepthTrend(txtPath);
+    trendLabel->setText(trendResult);
 }
 
 void frmXuLyFileDauVao::onBtnTachFileClicked()
