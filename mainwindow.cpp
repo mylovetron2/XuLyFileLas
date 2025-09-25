@@ -416,6 +416,7 @@ void MainWindow::readTXT(const QString &txtPath)
                     totalSeconds = hours * 3600 + minutes * 60 + seconds;
                 }
                 row[0] = QString::number(totalSeconds);
+                qDebug() << "TIME TXT chuyển sang giây:" << timeStr << "->" << totalSeconds;
                 // xử lý giá trị DEPTH
                 if (row.size() > 1)
                 {
