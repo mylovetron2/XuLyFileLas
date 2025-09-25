@@ -366,67 +366,82 @@ void MainWindow::readTXT(const QString &txtPath)
     }
     QTextStream txtIn(&txtFile);
 
-    int lineIdx = 0;
+    headerList.clear();
+    unitList.clear();
+    dataRows.clear();
+    bool foundHeader = false;
+    bool foundUnit = false;
     while (!txtIn.atEnd())
     {
         QString line = txtIn.readLine().trimmed();
         if (line.isEmpty())
             continue;
+        // Bỏ qua dòng ngày tháng hoặc dòng tiêu đề phụ
+        if (line.contains("- TIME - RECORDER", Qt::CaseInsensitive) ||
+            line.contains("DEPTH", Qt::CaseInsensitive) ||
+            line.contains("LOGGING", Qt::CaseInsensitive) ||
+            line.contains("VIETSOVPETRO", Qt::CaseInsensitive) ||
+            line.contains("RECORDER", Qt::CaseInsensitive) ||
+            QRegularExpression("^\\d{1,2}/\\d{1,2}/\\d{4}").match(line).hasMatch())
+            continue;
+
         QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        if (lineIdx == 0)
+        // Nhận diện dòng header (TIME DEPT ...)
+        if (!foundHeader && !parts.isEmpty() && (parts[0].toUpper() == "TIME" || parts[0].toUpper() == "DEPTH"))
         {
             headerList = parts;
+            foundHeader = true;
+            continue;
         }
-        else if (lineIdx == 1)
+        // Nhận diện dòng đơn vị (nếu có)
+        if (foundHeader && !foundUnit && !parts.isEmpty() && (parts[0].contains(":") || parts[0].contains("M") || parts[0].contains("S")))
         {
             unitList = parts;
+            foundUnit = true;
+            continue;
         }
-        else
+        // Nhận diện dòng dữ liệu bắt đầu bằng TIME hợp lệ (0:00:00:01 ...)
+        if (!parts.isEmpty() && QRegularExpression("^\\d+:\\d{2}:\\d{2}:\\d{2}$").match(parts[0]).hasMatch())
         {
             dataRows.append(parts);
         }
-        ++lineIdx;
     }
     txtFile.close();
 
-    if (!headerList.isEmpty() && headerList[0].toUpper() == "TIME")
+    // Chuyển đổi TIME sang giây cho từng dòng dữ liệu
+    for (QStringList &row : dataRows)
     {
-        for (QStringList &row : dataRows)
+        if (!row.isEmpty())
         {
-            if (!row.isEmpty())
+            QString timeStr = row[0];
+            QStringList timeParts = timeStr.split(":");
+            qint64 totalSeconds = 0;
+            if (timeParts.size() == 4)
             {
-                // Chuyển đổi chuỗi thời gian sang giây
-                QString timeStr = row[0];
-                // Hỗ trợ cả dạng có 3 hoặc 4 thành phần (hh:mm:ss hoặc dd:hh:mm:ss)
-                QStringList timeParts = timeStr.split(":");
-                qint64 totalSeconds = 0;
-                if (timeParts.size() == 4)
+                int days = timeParts[0].toInt();
+                int hours = timeParts[1].toInt();
+                int minutes = timeParts[2].toInt();
+                int seconds = timeParts[3].toInt();
+                totalSeconds = days * 86400 + hours * 3600 + minutes * 60 + seconds;
+            }
+            else if (timeParts.size() == 3)
+            {
+                int hours = timeParts[0].toInt();
+                int minutes = timeParts[1].toInt();
+                int seconds = timeParts[2].toInt();
+                totalSeconds = hours * 3600 + minutes * 60 + seconds;
+            }
+            row[0] = QString::number(totalSeconds);
+            qDebug() << "TIME TXT chuyển sang giây:" << timeStr << "->" << totalSeconds;
+            // xử lý giá trị DEPTH
+            if (row.size() > 1)
+            {
+                bool ok = false;
+                double depthVal = row[1].toDouble(&ok);
+                if (ok)
                 {
-                    int days = timeParts[0].toInt();
-                    int hours = timeParts[1].toInt();
-                    int minutes = timeParts[2].toInt();
-                    int seconds = timeParts[3].toInt();
-                    totalSeconds = days * 86400 + hours * 3600 + minutes * 60 + seconds;
-                }
-                else if (timeParts.size() == 3)
-                {
-                    int hours = timeParts[0].toInt();
-                    int minutes = timeParts[1].toInt();
-                    int seconds = timeParts[2].toInt();
-                    totalSeconds = hours * 3600 + minutes * 60 + seconds;
-                }
-                row[0] = QString::number(totalSeconds);
-                qDebug() << "TIME TXT chuyển sang giây:" << timeStr << "->" << totalSeconds;
-                // xử lý giá trị DEPTH
-                if (row.size() > 1)
-                {
-                    bool ok = false;
-                    double depthVal = row[1].toDouble(&ok);
-                    if (ok)
-                    {
-                        double depthFloor = std::floor(depthVal * 10.0) / 10.0;
-                        row[1] = QString::number(depthFloor, 'f', 3);
-                    }
+                    double depthFloor = std::floor(depthVal * 10.0) / 10.0;
+                    row[1] = QString::number(depthFloor, 'f', 3);
                 }
             }
         }
