@@ -461,161 +461,6 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
     curveInfoList.clear();
     wellInfoList.clear();
 
-    QFile lasFileCurve(lasPath);
-
-    if (lasFileCurve.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        QTextStream inCurve(&lasFileCurve);
-        bool inCurveSection = false;
-        bool inWellSection = false;
-        while (!inCurve.atEnd())
-        {
-            QString line = inCurve.readLine();
-            QString trimmed = line.trimmed();
-
-            // Xác định section ~WELL
-            if (trimmed.toUpper().startsWith("~WELL"))
-            {
-                inWellSection = true;
-                inCurveSection = false;
-                continue;
-            }
-            // Xác định section ~CURVE
-            if (trimmed.toUpper().startsWith("~CURVE"))
-            {
-                inCurveSection = true;
-                inWellSection = false;
-                continue;
-            }
-            // Nếu gặp section mới khác ~WELL/~CURVE thì thoát section hiện tại
-            if (trimmed.startsWith("~") && !trimmed.toUpper().startsWith("~WELL") && !trimmed.toUpper().startsWith("~CURVE"))
-            {
-                inWellSection = false;
-                if (inCurveSection)
-                    break; // Kết thúc section ~CURVE
-            }
-
-            // Đọc thông tin WELL
-
-            if (inWellSection)
-            {
-                if (trimmed.isEmpty() || trimmed.startsWith("#"))
-                    continue;
-                // Định dạng: mnemonic.unit value : description
-                // Ví dụ: STRT.MS         86283000.000 : I         a      /I          d
-                QRegularExpression re(R"(^\s*(\S+)\s*\.\s*(\S*)\s+([\d\.-]+)?\s*:\s*(.*)$)");
-                QRegularExpressionMatch match = re.match(trimmed);
-                if (match.hasMatch())
-                {
-                    CurveInfo info;
-                    info.mnemonic = match.captured(1);
-                    info.unit = match.captured(2);
-                    info.value = match.captured(3).trimmed();
-                    info.description = match.captured(4).trimmed();
-                    wellInfoList.append(info);
-                }
-                else
-                {
-                    // Nếu không match format mới, thử format cũ (không có value)
-                    QRegularExpression re2(R"(^\s*(\S+)\s*\.\s*(\S*)\s+(.*)$)");
-                    QRegularExpressionMatch match2 = re2.match(trimmed);
-                    if (match2.hasMatch())
-                    {
-                        CurveInfo info;
-                        info.mnemonic = match2.captured(1);
-                        info.unit = match2.captured(2);
-                        info.value = "";
-                        info.description = match2.captured(3).trimmed();
-                        wellInfoList.append(info);
-                    }
-                }
-            }
-
-            // Đọc thông tin CURVE
-            if (inCurveSection)
-            {
-                if (trimmed.isEmpty() || trimmed.startsWith("#"))
-                    continue;
-                // Định dạng: mnemonic.unit value : description
-                // Ví dụ: STRT.MS         86283000.000 : I         a      /I          d
-                QRegularExpression re(R"(^\s*(\S+)\s*\.\s*(\S*)\s+([\d\.-]+)?\s*:\s*(.*)$)");
-                QRegularExpressionMatch match = re.match(trimmed);
-                if (match.hasMatch())
-                {
-                    CurveInfo info;
-                    info.mnemonic = match.captured(1);
-                    info.unit = match.captured(2);
-                    info.value = match.captured(3).trimmed();
-                    info.description = match.captured(4).trimmed();
-                    curveInfoList.append(info);
-                }
-                else
-                {
-                    // Nếu không match format mới, thử format cũ (không có value)
-                    QRegularExpression re2(R"(^\s*(\S+)\s*\.\s*(\S*)\s+(.*)$)");
-                    QRegularExpressionMatch match2 = re2.match(trimmed);
-                    if (match2.hasMatch())
-                    {
-                        CurveInfo info;
-                        info.mnemonic = match2.captured(1);
-                        info.unit = match2.captured(2);
-                        info.value = "";
-                        info.description = match2.captured(3).trimmed();
-                        curveInfoList.append(info);
-                    }
-                }
-            }
-        }
-        lasFileCurve.close();
-    }
-
-    // Debug:
-    // In ra nội dung curveInfoList và wellInfoList
-    // qDebug()
-    //     << "curveInfoList:";
-    // for (const CurveInfo &info : curveInfoList)
-    // {
-    //     qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
-    // }
-    // qDebug() << "wellInfoList:";
-    // for (const CurveInfo &info : wellInfoList)
-    // {
-    //     qDebug() << "  mnemonic:" << info.mnemonic << ", unit:" << info.unit << ", description:" << info.description;
-    // }
-
-    // Bắt đầu merge dữ liệu TXT vào LAS
-    blockList.clear();
-    QSet<qint64> txtTimeSet;
-    QMap<qint64, double> timeToDepthMap;
-    qint64 minTime = LLONG_MAX, maxTime = LLONG_MIN;
-    for (const QStringList &row : dataRows)
-    {
-        if (row.isEmpty() || row.size() < 2)
-            continue;
-        bool ok1 = false, ok2 = false;
-        qint64 t = row[0].toLongLong(&ok1);
-        double depthVal = row[1].toDouble(&ok2);
-        if (ok1 && ok2)
-        {
-            txtTimeSet.insert(t);
-            // Làm tròn xuống 1 số thập phân (floor về 0.1)
-            double depthValFloor = std::floor(depthVal * 10.0) / 10.0;
-            // Định dạng depth: 1 số thập phân + 2 số 0 phía sau (vd: 12.300)
-            QString depthStr = QString::number(depthValFloor, 'f', 1) + "00";
-            timeToDepthMap[t] = depthStr.toDouble();
-            if (t < minTime)
-                minTime = t;
-            if (t > maxTime)
-                maxTime = t;
-        }
-    }
-
-    if (minTime == LLONG_MAX || maxTime == LLONG_MIN)
-    {
-        QMessageBox::warning(this, "Lỗi", "Không tìm thấy TIME hợp lệ trong TXT!");
-        return;
-    }
-
     QFile lasFile(lasPath);
     if (!lasFile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
@@ -623,117 +468,133 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
         return;
     }
     QTextStream in(&lasFile);
-    bool inAscii = false;
-    BlockData currentBlock;
-    bool hasCurrentBlock = false;
-    blockList.clear();
-    qint64 lastBlockTime = -1;
-    bool stopReading = false;
-    while (!in.atEnd() && !stopReading)
+    QString section;
+    curveInfoList.clear();
+    wellInfoList.clear();
+    while (!in.atEnd())
     {
         QString line = in.readLine();
         QString trimmed = line.trimmed();
-        if (trimmed.toUpper().startsWith("~ASCII"))
+        if (trimmed.startsWith("~"))
         {
-            inAscii = true;
+            section = trimmed.toUpper();
             continue;
         }
-        if (!inAscii)
-            continue;
-        if (trimmed.isEmpty() || trimmed.startsWith("#"))
-            continue;
-        QStringList parts = trimmed.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        bool isBlockHeader = (parts.size() == 1 && !line.isEmpty() && !line.at(0).isSpace());
-        if (isBlockHeader)
+        if (section == "~CURVE INFORMATION" || section == "~CURVE")
         {
-            // Nếu đang có block, kiểm tra block đó có TIME trong TXT không, nếu có thì giữ lại
-            if (hasCurrentBlock)
+            // Bỏ qua dòng comment
+            if (trimmed.startsWith("#") || trimmed.isEmpty())
+                continue;
+            // Regex duy nhất nhận mọi trường hợp: MNEM . UNIT VALUE : DESCRIPTION (có thể thiếu unit, value, description)
+            QRegularExpression re("^([A-Za-z0-9_]+)\s*\.\s*([A-Za-z0-9_]*)\s*([^:]*)?:?\s*(.*)$");
+            QRegularExpressionMatch m = re.match(trimmed);
+            if (m.hasMatch())
             {
-                if (lastBlockTime >= minTime && lastBlockTime <= maxTime && txtTimeSet.contains(lastBlockTime) && !currentBlock.data.isEmpty())
-                {
-                    // Gán lại depth từ TXT khi merge
-                    if (timeToDepthMap.contains(lastBlockTime))
-                        currentBlock.depth = timeToDepthMap[lastBlockTime];
-                    blockList.append(currentBlock);
-                }
-                // Nếu block vừa duyệt là maxTime thì dừng luôn
-                if (lastBlockTime == maxTime)
-                {
-                    stopReading = true;
-                    break;
-                }
-                currentBlock = BlockData();
+                CurveInfo info;
+                info.mnemonic = m.captured(1).trimmed();
+                info.unit = m.captured(2).trimmed();
+                info.value = m.captured(3).trimmed();
+                info.description = m.captured(4).trimmed();
+                curveInfoList.append(info);
+                continue;
             }
-            bool ok = false;
-            double depthVal = parts[0].toDouble(&ok);
-            if (ok)
+        }
+        else if (section == "~WELL INFORMATION" || section == "~WELL")
+        {
+            if (trimmed.startsWith("#") || trimmed.isEmpty())
+                continue;
+            QRegularExpression re("^([A-Za-z0-9_]+)\\.([A-Za-z0-9_]+)\\s+([^:]*):\\s*(.*)$");
+            QRegularExpressionMatch m = re.match(trimmed);
+            if (m.hasMatch())
             {
-                qint64 t = static_cast<qint64>(depthVal);
-                t = t / 1000;
-                lastBlockTime = t;
-                if (t < minTime || t > maxTime)
-                {
-                    hasCurrentBlock = false;
+                CurveInfo info;
+                info.mnemonic = m.captured(1).trimmed();
+                info.unit = m.captured(2).trimmed();
+                info.value = m.captured(3).trimmed();
+                info.description = m.captured(4).trimmed();
+                wellInfoList.append(info);
+            }
+        }
+        else if (section == "~ASCII" || section == "~ASCII DATA")
+        {
+            blockList.clear();
+            // int numCurves = curveInfoList.size() - 1;
+            while (!in.atEnd())
+            {
+
+                QString trimmed = line.trimmed();
+                if (trimmed.isEmpty() || trimmed.startsWith("#"))
                     continue;
-                }
-                // Không gán depth ở đây, sẽ gán lại từ TXT khi merge
-                hasCurrentBlock = true;
-            }
-            else
-            {
-                hasCurrentBlock = false;
-            }
-            continue;
-        }
-        // Dữ liệu trong block
-        if (hasCurrentBlock)
-        {
-            QVector<double> dataVec;
-            bool allOk = true;
-            for (const QString &val : parts)
-            {
-                bool ok = false;
-                double d = val.toDouble(&ok);
-                if (!ok)
+                // Xử lý depth header ngay tại dòng hiện tại
+                double depthVal = trimmed.toDouble();
+                BlockData block;
+                block.depth = depthVal;
+                // Đọc các dòng dữ liệu tiếp theo cho block này
+                line = in.readLine();
+                QVector<QVector<double>> values;
+                int num = 0;
+                while (!line.isNull() && !line.trimmed().isEmpty())
                 {
-                    allOk = false;
-                    break;
+                    QStringList valueParts = line.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+                    QVector<double> row;
+
+                    // bool allOk = true;
+
+                    for (const QString &val : valueParts)
+                    {
+                        // bool ok = false;
+                        double d = val.toDouble();
+                        //  if (!ok) {
+                        //      allOk = false;
+                        //      break;
+                        //  }
+                        num++;
+                        row.append(d);
+                    }
+                    // if (allOk && !row.isEmpty())
+                    //     values.append(row);
+                    values.append(row);
+                    if (num == numCurves - 1) // Giới hạn số dòng dữ liệu mỗi block để tránh quá tải
+                        break;
+                    line = in.readLine();
                 }
-                dataVec.append(d);
-            }
-            if (allOk && !dataVec.isEmpty())
-            {
-                currentBlock.data.append(dataVec);
+                block.data = values;
+
+                blockList.append(block);
+                line = in.readLine();
             }
         }
     }
-    // Xử lý block cuối cùng
-    if (hasCurrentBlock && !stopReading)
+    // Debug: In ra số lượng block, depth, số dòng dữ liệu và 3 dòng đầu của mỗi block
+    qDebug() << "BlockList size:" << blockList.size();
+    for (int i = 0; i < 5; ++i)
     {
-        if (lastBlockTime >= minTime && lastBlockTime <= maxTime && txtTimeSet.contains(lastBlockTime) && !currentBlock.data.isEmpty())
+        const BlockData &b = blockList[i];
+        qDebug() << "Block" << i << "depth:" << b.depth << "numRows:" << b.data.size();
+        for (int j = 0; j < b.data.size(); ++j)
         {
-            if (timeToDepthMap.contains(lastBlockTime))
-                currentBlock.depth = timeToDepthMap[lastBlockTime];
-            blockList.append(currentBlock);
+            qDebug() << "  Data row" << j << ":" << b.data[j];
         }
     }
+    // Debug: In ra nội dung curveInfoList và wellInfoList
+    // qDebug() << "Curve Information List:";
+    // for (const CurveInfo &info : curveInfoList)
+    // {
+    //     qDebug() << "Mnemonic:" << info.mnemonic
+    //              << "Unit:" << info.unit
+    //              << "Value:" << info.value
+    //              << "Description:" << info.description;
+    // }
+    // qDebug() << "Well Information List:";
+    // for (const CurveInfo &info : wellInfoList)
+    // {
+    //     qDebug() << "Mnemonic:" << info.mnemonic
+    //              << "Unit:" << info.unit
+    //              << "Value:" << info.value
+    //              << "Description:" << info.description;
+    // }
+
     lasFile.close();
-    qDebug() << "Đã merge xong TXT vào LAS. blockList size:" << blockList.size();
-    qDebug() << " Debug: In ra 10 giá trị đầu tiên của blockList sau khi merge";
-    int debugCount = 0;
-    for (const BlockData &block : blockList)
-    {
-        qDebug() << "Block depth:" << block.depth;
-        for (const QVector<double> &row : block.data)
-        {
-            qDebug() << "  Data row:" << row;
-            debugCount++;
-            if (debugCount >= 10)
-                break;
-        }
-        if (debugCount >= 10)
-            break;
-    }
 }
 
 // Ghi blockList ra file LAS mới, giữ nguyên header và format LAS

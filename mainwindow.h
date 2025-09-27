@@ -68,6 +68,7 @@ private:
     QList<CurveInfo> curveInfoList;
     QList<CurveInfo> wellInfoList; // Lưu toàn bộ header của file LAS gốc
     bool isDepthIncreasing = true;
+    int numCurves = 26;
 };
 
 #endif // MAINWINDOW_H
