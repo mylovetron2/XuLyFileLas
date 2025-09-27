@@ -597,6 +597,40 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
             }
         }
     }
+
+    // Merge dữ liệu độ sâu từ TXT vào blockList
+    // Tạo map TIME (giây) -> DEPTH từ TXT
+    QMap<qint64, double> timeToDepth;
+    for (const QStringList &row : dataRows)
+    {
+        if (row.size() >= 2)
+        {
+            bool ok1 = false, ok2 = false;
+            qint64 t = row[0].toLongLong(&ok1);
+            double depthVal = row[1].toDouble(&ok2);
+            if (ok1 && ok2)
+            {
+                // Làm tròn xuống 1 số thập phân (floor về 0.1)
+                double depthFloor = std::floor(depthVal * 10.0) / 10.0;
+                timeToDepth[t] = depthFloor;
+            }
+        }
+    }
+
+    // Duyệt từng block, nếu TIME không có trong TXT thì xóa block đó khỏi blockList
+    for (int i = blockList.size() - 1; i >= 0; --i)
+    {
+        qint64 timeInt = static_cast<qint64>(blockList[i].depth / 1000.0);
+        if (timeToDepth.contains(timeInt))
+        {
+            blockList[i].depth = timeToDepth[timeInt];
+        }
+        else
+        {
+            blockList.removeAt(i);
+        }
+    }
+
     // Debug: In ra số lượng block, depth, số dòng dữ liệu và  dòng đầu của mỗi block
     qDebug() << "BlockList size:" << blockList.size();
     for (int i = 0; i < 5; ++i)
@@ -1156,4 +1190,45 @@ void MainWindow::on_btnDrawTxtChart_clicked()
         chartView->setDragMode(QGraphicsView::ScrollHandDrag); });
 
     chartView->show();
+}
+
+// parseAsciiBlocks(in, numCurves, blockList, line);
+//  Hàm tách block ~ASCII thành các BlockData
+void MainWindow::parseAsciiBlocks(QTextStream &in, int numCurves, QList<BlockData> &blockList, QString line)
+{
+    while (!in.atEnd())
+    {
+        QString trimmed = line.trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith("#"))
+        {
+            line = in.readLine();
+            continue;
+        }
+        // Xử lý depth header ngay tại dòng hiện tại
+        double depthVal = trimmed.toDouble();
+        BlockData block;
+        block.depth = depthVal;
+        // Đọc các dòng dữ liệu tiếp theo cho block này
+        line = in.readLine();
+        QVector<QVector<double>> values;
+        int num = 0;
+        while (!line.isNull() && !line.trimmed().isEmpty())
+        {
+            QStringList valueParts = line.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+            QVector<double> row;
+            for (const QString &val : valueParts)
+            {
+                double d = val.toDouble();
+                num++;
+                row.append(d);
+            }
+            values.append(row);
+            if (num == numCurves - 1)
+                break;
+            line = in.readLine();
+        }
+        block.data = values;
+        blockList.append(block);
+        line = in.readLine();
+    }
 }

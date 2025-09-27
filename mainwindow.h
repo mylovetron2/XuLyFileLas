@@ -37,6 +37,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void parseAsciiBlocks(QTextStream &in, int numCurves, QList<BlockData> &blockList, QString line);
     static qint64 timeStringToSeconds(const QString &str);
     // Ghi blockList ra file LAS mới, giữ nguyên header và format LAS
     bool writeBlockListToLas(const QString &outputPath, const QList<BlockData> &blocks, const QStringList &headerLines);
