@@ -461,6 +461,38 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
     curveInfoList.clear();
     wellInfoList.clear();
 
+    // Xử lý dataRow của file Txt tìm min max depth
+    QSet<qint64> txtTimeSet;
+    QMap<qint64, double> timeToDepthMap;
+    qint64 minTime = LLONG_MAX, maxTime = LLONG_MIN;
+    for (const QStringList &row : dataRows)
+    {
+        if (row.isEmpty() || row.size() < 2)
+            continue;
+        bool ok1 = false, ok2 = false;
+        qint64 t = row[0].toLongLong(&ok1);
+        double depthVal = row[1].toDouble(&ok2);
+        if (ok1 && ok2)
+        {
+            txtTimeSet.insert(t);
+            // Làm tròn xuống 1 số thập phân (floor về 0.1)
+            double depthValFloor = std::floor(depthVal * 10.0) / 10.0;
+            // Định dạng depth: 1 số thập phân + 2 số 0 phía sau (vd: 12.300)
+            QString depthStr = QString::number(depthValFloor, 'f', 1) + "00";
+            timeToDepthMap[t] = depthStr.toDouble();
+            if (t < minTime)
+                minTime = t;
+            if (t > maxTime)
+                maxTime = t;
+        }
+    }
+
+    if (minTime == LLONG_MAX || maxTime == LLONG_MIN)
+    {
+        QMessageBox::warning(this, "Lỗi", "Không tìm thấy TIME hợp lệ trong TXT!");
+        return;
+    }
+
     QFile lasFile(lasPath);
     if (!lasFile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
@@ -565,7 +597,7 @@ void MainWindow::mergeTxtLas(const QString &lasPath)
             }
         }
     }
-    // Debug: In ra số lượng block, depth, số dòng dữ liệu và 3 dòng đầu của mỗi block
+    // Debug: In ra số lượng block, depth, số dòng dữ liệu và  dòng đầu của mỗi block
     qDebug() << "BlockList size:" << blockList.size();
     for (int i = 0; i < 5; ++i)
     {
